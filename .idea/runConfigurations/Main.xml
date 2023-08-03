@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Main" type="Application" factoryName="Application">
+    <option name="ALTERNATIVE_JRE_PATH" value="/usr/lib/jvm/java-17-amazon-corretto" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+    <option name="MAIN_CLASS_NAME" value="virtual_robot.controller.VirtualRobotApplication" />
+    <module name="Controller" />
+    <option name="VM_PARAMETERS" value="--module-path $USER_HOME$/Downloads/javafx-sdk-20.0.2/lib/ --add-modules javafx.controls,javafx.fxml" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
