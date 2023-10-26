@@ -1,6 +1,6 @@
 package org.firstinspires.ftc.teamcode;
 
-import com.qualcomm.robotcore.hardware.DcMotor;
+import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -21,7 +21,28 @@ public class EncBot {
     private final double ENCODER_WHEEL_CIRCUMFERENCE = Math.PI * 2.0;
     private final double ENCODER_WIDTH = 12.0;
 
-    public final DcMotorEx[] motors = new DcMotorEx[4]; //back_left, front_left, front_right, back_right
+    public final Motors motors = new Motors();
+
+    public static class Motors {
+        DcMotorEx backLeft;
+        DcMotorEx frontLeft;
+        DcMotorEx frontRight;
+        DcMotorEx backRight;
+
+        public Motors() {
+            backLeft = null;
+            frontLeft = null;
+            frontRight = null;
+            backRight = null;
+        }
+
+        public void init(HardwareMap hwMap) {
+            backLeft = hwMap.get(DcMotorEx.class, "back_left_motor");
+            frontLeft = hwMap.get(DcMotorEx.class, "front_left_motor");
+            frontRight = hwMap.get(DcMotorEx.class, "front_right_motor");
+            backRight = hwMap.get(DcMotorEx.class, "back_right_motor");
+        }
+    }
     public final DcMotorEx[] encoders = new DcMotorEx[3]; //right, left, X
 
     public int[] prevTicks = new int[3];
@@ -29,23 +50,11 @@ public class EncBot {
     public double[] pose = new double[3];
 
     public void init(HardwareMap hwMap){
-        String[] motorNames =  new String[]{"back_left_motor", "front_left_motor", "front_right_motor", "back_right_motor"};
-        for (int i=0; i<4; i++) motors[i] = hwMap.get(DcMotorEx.class, motorNames[i]);
-        motors[0].setDirection(DcMotorSimple.Direction.REVERSE);
-        motors[1].setDirection(DcMotorSimple.Direction.REVERSE);
+        motors.init(hwMap);
+        motors.backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+        motors.frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         String[] encoderNames = new String[]{"enc_right", "enc_left", "enc_x"};
         for (int i=0; i<3; i++) encoders[i] = hwMap.get(DcMotorEx.class, encoderNames[i]);
-    }
-
-    public void setDrivePower(double px, double py, double pa){
-        double[] p = new double[4];
-        p[0] = -px + py - pa;
-        p[1] = px + py - pa;
-        p[2] = -px + py + pa;
-        p[3] = px + py + pa;
-        double max = Math.max(1, Math.max(Math.abs(p[0]), Math.max(Math.abs(p[1]), Math.max(Math.abs(p[2]), Math.abs(p[3])))));
-        if (max > 1) for (int i=0; i<4; i++) p[i] /= max;
-        for (int i=0; i<4; i++) motors[i].setPower(p[i]);
     }
 
     public void resetOdometry(double x, double y, double headingRadians){
@@ -55,7 +64,12 @@ public class EncBot {
         for (int i=0; i<3; i++) prevTicks[i] = encoders[i].getCurrentPosition();
     }
 
-    public double[] updateOdometry(){
+    public Pose2d updateOdometry() {
+        double[] pose = internalUpdate();
+        return new Pose2d(-pose[1], pose[0], -pose[2]);
+    }
+
+    private double[] internalUpdate(){
         int[] ticks = new int[3];
         for (int i=0; i<3; i++) ticks[i] = encoders[i].getCurrentPosition();
         int newRightTicks = ticks[0] - prevTicks[0];

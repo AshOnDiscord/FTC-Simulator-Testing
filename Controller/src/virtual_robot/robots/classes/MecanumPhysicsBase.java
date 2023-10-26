@@ -35,7 +35,7 @@ public abstract class MecanumPhysicsBase extends VirtualBot {
      * Gear ratio for any external gears added in drive train. For now, this is just 1.0. Could easily
      * add a constructor to MecanumPhysicsBase that allows this to be set to some other value.
      */
-    protected double gearRatioWheel = 1.0;
+    protected double gearRatioWheel = 5.0;
 
     /*
      * Robot geometry, in pixels. These will be calculated in the initialize() method. They cannot be computed

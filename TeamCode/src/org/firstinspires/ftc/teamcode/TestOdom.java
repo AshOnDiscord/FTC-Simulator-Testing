@@ -1,9 +1,9 @@
 package org.firstinspires.ftc.teamcode;
 
+import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorExImpl;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 /**
  * TeleOp op mode to test odometry with three "dead-wheel" encoders. This op mode will work with
@@ -13,34 +13,89 @@ import com.qualcomm.robotcore.hardware.DcMotorExImpl;
 public class TestOdom extends LinearOpMode {
 
     EncBot bot = new EncBot();
-    double[] pose;
+    Pose2d pose;
+    PID xPID = new PID(0.35 * 0.6, 0.35 * 1.2 ,0.35 * 0.075, 0);
+    PID yPID = new PID(0.35 * 0.6, 0.35 * 1.2 ,0.35 * 0.075, 0);
+    PID hPID = new PID(5.5 * 0.6, 5.5 * 1.2 ,5.5 * 0.075, 0, true);
+
+    ElapsedTime timer;
 
     public void runOpMode(){
         bot.init(hardwareMap);
-        bot.resetOdometry(0, 0, Math.PI/2.0);
+        bot.resetOdometry(0, 0, 0);
 
         while(!opModeIsActive() && !isStopRequested()){
             telemetry.addData("time", this.time);
             telemetry.update();
         }
 
+        Pose2d[] path = new Pose2d[] {
+                new Pose2d(0, 24 * 2, Math.toRadians(90)),
+                new Pose2d(12 * 2 , 0, Math.toRadians(-90)),
+                new Pose2d(-12 * 2 , -24 * 2, Math.toRadians(0)),
+                new Pose2d(0 , 0, Math.toRadians(0)),
+        };
+        int currentWaypoint = 0;
+
+        timer = new ElapsedTime();
+        timer.reset();
+
         while (opModeIsActive()){
             pose = bot.updateOdometry();
+            if (goTo(path[currentWaypoint])) {
+                currentWaypoint++;
+                timer.reset();
+                if (currentWaypoint >= path.length) return;
+            }
             telemetry.addData("time", this.time);
-            telemetry.addData("POSE", "x = %.1f  y = %.1f  h = %.1f", pose[0], pose[1],
-                    Math.toDegrees(pose[2]));
-            telemetry.addData("Back Left", "T = %d  V = %.0f", bot.motors[0].getCurrentPosition(), bot.motors[0].getVelocity());
-            telemetry.addData("Front Left", "T = %d  V = %.0f", bot.motors[1].getCurrentPosition(), bot.motors[1].getVelocity());
-            telemetry.addData("Front Right", "T = %d  V = %.0f", bot.motors[2].getCurrentPosition(), bot.motors[2].getVelocity());
-            telemetry.addData("Back Right", "T = %d  V = %.0f", bot.motors[3].getCurrentPosition(), bot.motors[3].getVelocity());
-            telemetry.addData("Right Enc", "T = %d  V = %.0f", bot.encoders[0].getCurrentPosition(), bot.encoders[0].getVelocity());
-            telemetry.addData("Left Enc", "T = %d  V = %.0f", bot.encoders[1].getCurrentPosition(), bot.encoders[1].getVelocity());
-            telemetry.addData("X Enc", "T = %d  V = %.0f", bot.encoders[2].getCurrentPosition(), bot.encoders[2].getVelocity());
+            telemetry.addData("POSE", "x = %.1f  y = %.1f  h = %.1f", pose.getX(), pose.getY(), Math.toDegrees(pose.getHeading()));
             telemetry.update();
-            double px = gamepad1.left_stick_x;
-            double py = -gamepad1.left_stick_y;
-            double pa = gamepad1.left_trigger - gamepad1.right_trigger;
-            bot.setDrivePower(px, py, pa);
         }
+    }
+
+    public boolean goTo(Pose2d target) {
+        double xTolerance = 1;
+        double yTolerance = 1;
+        double hTolerance = 2;
+
+        double accelMax = Math.min(timer.milliseconds() / 750, 1);
+        System.out.println(accelMax + " " + timer.seconds());
+
+        telemetry.addData("max", accelMax);
+
+        double x = xPID.getError(target.getX(), pose.getX());
+        double y = yPID.getError(target.getY(), pose.getY());
+        double rx = hPID.getError(target.getHeading(), pose.getHeading());
+
+        telemetry.addData("x", x);
+        telemetry.addData("y", y);
+        telemetry.addData("rx", rx);
+        fieldCentricMove(x, y, rx, accelMax);
+
+        return Math.abs(target.getX() - pose.getX()) < xTolerance && Math.abs(target.getY() - pose.getY()) < yTolerance && Math.abs(Math.toDegrees(target.getHeading() - pose.getHeading())) < hTolerance;
+    }
+
+    public void fieldCentricMove(Pose2d dir, double maxPower) {
+        fieldCentricMove(dir.getX(), dir.getY(), dir.getHeading(), maxPower);
+    }
+    public void fieldCentricMove(double x, double y, double rx, double maxPower) {
+
+        double botHeading = -pose.getHeading();
+
+        double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
+        double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
+
+        rotX = rotX * 1.1;
+
+        double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1) * 1 / maxPower;
+        double frontLeftPower = (rotY + rotX + rx) / denominator;
+        double backLeftPower = (rotY - rotX + rx) / denominator;
+        double frontRightPower = (rotY - rotX - rx) / denominator;
+        double backRightPower = (rotY + rotX - rx) / denominator;
+
+        bot.motors.frontLeft.setPower(frontLeftPower);
+        bot.motors.backLeft.setPower(backLeftPower);
+        bot.motors.frontRight.setPower(frontRightPower);
+        bot.motors.backRight.setPower(backRightPower);
     }
 }
