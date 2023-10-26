@@ -17,6 +17,9 @@ public class TestOdom extends LinearOpMode {
     PID xPID = new PID(0.35 * 0.6, 0.35 * 1.2 ,0.35 * 0.075, 0);
     PID yPID = new PID(0.35 * 0.6, 0.35 * 1.2 ,0.35 * 0.075, 0);
     PID hPID = new PID(5.5 * 0.6, 5.5 * 1.2 ,5.5 * 0.075, 0, true);
+//    PID xPID = new PID(0.35 * 0.2, 0.35 * 0.4 ,0.35 * 0.066, 0);
+//    PID yPID = new PID(0.35 * 0.2, 0.35 * 0.4 ,0.35 * 0.066, 0);
+//    PID hPID = new PID(5.5 * 0.2, 5.5 * 0.4 ,5.5 * 0.066, 0, true);
 
     ElapsedTime timer;
 
@@ -59,13 +62,14 @@ public class TestOdom extends LinearOpMode {
         double hTolerance = 2;
 
         double accelMax = Math.min(timer.milliseconds() / 750, 1);
+//        double accelMax = 1;
         System.out.println(accelMax + " " + timer.seconds());
 
         telemetry.addData("max", accelMax);
 
-        double x = xPID.getError(target.getX(), pose.getX());
-        double y = yPID.getError(target.getY(), pose.getY());
-        double rx = hPID.getError(target.getHeading(), pose.getHeading());
+        double x = xPID.getError(target.getX(), pose.getX(), accelMax);
+        double y = yPID.getError(target.getY(), pose.getY(), accelMax);
+        double rx = hPID.getError(target.getHeading(), pose.getHeading(), accelMax);
 
         telemetry.addData("x", x);
         telemetry.addData("y", y);

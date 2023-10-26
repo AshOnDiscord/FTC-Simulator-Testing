@@ -44,7 +44,7 @@ public class PID {
         timer.reset();
     }
 
-    public double getError(double target, double current) {
+    public double getError(double target, double current, double accelMax) {
         if (lastTarget == null) lastTarget = target;
 
         // calculate the error
@@ -60,10 +60,10 @@ public class PID {
         previousFilterEstimate = currentFilterEstimate;
 
         // rate of change of the error
-        double derivative = currentFilterEstimate / timer.seconds();
+        double derivative = currentFilterEstimate / timer.seconds() / accelMax;
 
         // sum of all error over time
-        integralSum = integralSum + (error * timer.seconds());
+        integralSum += (error * timer.seconds()) * accelMax;
 
         // max out integral sum
         if (integralSum > maxIntegralSum) {
